@@ -13,8 +13,26 @@ np.random.seed(6)
 lbl_cmap = random_label_cmap()
 
 ################################
-imgFolder = os.path.join('..','2021-01-14_NMGstain_coated_and_uncoated','coated-wt-triton')
-outputFolder = os.path.join('..','results_analysis','coated-wt-triton')
+
+pc = os.environ['COMPUTERNAME']
+if pc=='PCBA-TRIVEDI03': # my Razer
+    folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+elif pc=='PCBA-TRIVEDI02': # workstation
+    folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+
+exp_folder = os.path.join('2021-01-14_NMGstain_coated_and_uncoated')
+
+folderPath = os.path.join(folder_raw, exp_folder)
+
+imgFolder = os.path.join(folder_raw, exp_folder, 'results')
+outputFolder = os.path.join(folder_raw, exp_folder, 'results')
+
+imgName = 'coated_wt-triton-stitched_%d%d.tif'
+down = 1
+
+channel_segment = 1 # DAPI
+vis_down = 4
+
 ################################
 
 # prints a list of available models 
@@ -23,42 +41,61 @@ StarDist2D.from_pretrained()
 model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
 # load image
-imgName = glob.glob(os.path.join(imgFolder,'r6*.tif'))[0]
-print(imgName)
-X = imread(imgName)[8,]
-print(X.shape)
+print('Loading image...')
+imgName = imgName%(down,down)
+X = imread(os.path.join(imgFolder,imgName))
+print('Done.',X.shape)
 
-n_channel = 1 if X[0].ndim == 2 else X[0].shape[-1]
+# normalize and segment cells in the image
+print('Normalizing...')
 axis_norm = (0,1)
-
-img = normalize(X[1], 1,99.8, axis=axis_norm)
-labels, _ = model.predict_instances(img)
+img = normalize(X[:,:,channel_segment], 1,99.8, axis=axis_norm)
+# use tiles to avoid OOM
+print('Predicting cells with StarDist...')
+labels, _ = model.predict_instances_big(img, axes='YX', 
+                                            block_size=4096,
+                                            min_overlap=128, 
+                                            n_tiles=(8,8), 
+                                            show_progress=True)
+print('Done.', img.shape)
 
 plt.figure(figsize=(8,8))
-plt.imshow(img if img.ndim==2 else img[...,0], clim=(0,1), cmap='gray')
-plt.imshow(labels, cmap=lbl_cmap, alpha=0.5)
+plt.imshow(img[::vis_down,::vis_down], clim=(0,1), cmap='gray')
+plt.imshow(labels[::vis_down,::vis_down], cmap=lbl_cmap, alpha=0.5)
 plt.axis('off')
 plt.show()
 
-labels2 = morphology.remove_small_objects(labels, 1000)
-labels2 = measure.label(labels2, connectivity=labels2.ndim)
+# remove small objects, relabel and save mask
+print('Removing small objects and relabeling...')
+labels = morphology.remove_small_objects(labels, 1000)
+labels = measure.label(labels, connectivity=labels.ndim)
+print('Saving mask...')
+imsave(os.path.join(outputFolder,'mask_'+imgName), labels.astype(np.uint16))
 
+
+
+### Find cell props
+print('Reading mask...')
+# labels = imread(os.path.join(outputFolder,'mask_'+imgName))
+print('Done.')
+
+# use skimage measure regionprops to extract all features
+print('Extracting region props...')
 prop_names = ['label','bbox','centroid','area','perimeter',
             'minor_axis_length','major_axis_length','eccentricity',
             'mean_intensity','min_intensity','max_intensity']
-props = pd.DataFrame(measure.regionprops_table(labels2, intensity_image=np.moveaxis(X,0,-1),
+props = pd.DataFrame(measure.regionprops_table(labels, intensity_image=X,
                                                properties=prop_names))
-imsave(os.path.join(outputFolder,'mask.tif'), labels2.astype(np.uint16))
 prop_names_ordered = list(props.keys())
 prop_names_ordered.insert(0,'fileName')
 props['fileName'] = imgName
-
 props = props[prop_names_ordered]
-
-props.to_csv(os.path.join(outputFolder,'props.csv'))
+print('Saving regionprops in csv...')
+props.to_csv(os.path.join(outputFolder,'props_'+os.path.splitext(imgName)[0]+'.csv'))
+print('Done.')
 
 plt.figure(figsize=(8,8))
-plt.imshow(img if img.ndim==2 else img[...,0], clim=(0,.7), cmap='gray')
-plt.imshow(labels2, cmap=lbl_cmap, alpha=0.5)
+plt.imshow(img[::vis_down,::vis_down], clim=(0,.7), cmap='gray')
+plt.imshow(labels[::vis_down,::vis_down], cmap=lbl_cmap, alpha=0.5)
 plt.axis('off')
 plt.show()

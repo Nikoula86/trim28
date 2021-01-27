@@ -155,7 +155,7 @@ for folder in folder_names:
             #     imsave('stitched_test.tif', imgs_all, byteorder='>', imagej=True,
             #                             metadata={'mode': 'composite'}, extratags=ijtags)
 
-    imsave(folder+'-stitched_%d%d1.tif'%(down,down), imgs_all, byteorder='>', imagej=True,
+    imsave(os.path.join(folderPath,'results',i+'-stitched_%d%d.tif'%(down,down)), imgs_all, byteorder='>', imagej=True,
                             metadata={'mode': 'composite'}, extratags=ijtags)
 
     i += 1
