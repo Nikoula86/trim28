@@ -27,20 +27,17 @@ folderPath = os.path.join(folder_raw, exp_folder)
 imgFolder = os.path.join(folder_raw, exp_folder, 'results')
 outputFolder = os.path.join(folder_raw, exp_folder, 'results')
 
-imgName = 'coated_wt-triton-stitched_%d%d.tif'
+imgName = 'coated_empty-triton-stitched_%d%d.tif'
 down = 1
 
 channel_segment = 1 # DAPI
 vis_down = 4
 
+make_segmentation = True
+
 ################################
 
-# prints a list of available models 
-StarDist2D.from_pretrained()
-# load the versatile 2D model
-model = StarDist2D.from_pretrained('2D_versatile_fluo')
-
-# load image
+# ##load image
 print('Loading image...')
 imgName = imgName%(down,down)
 X = imread(os.path.join(imgFolder,imgName))
@@ -50,35 +47,41 @@ print('Done.',X.shape)
 print('Normalizing...')
 axis_norm = (0,1)
 img = normalize(X[:,:,channel_segment], 1,99.8, axis=axis_norm)
-# use tiles to avoid OOM
-print('Predicting cells with StarDist...')
-labels, _ = model.predict_instances_big(img, axes='YX', 
-                                            block_size=4096,
-                                            min_overlap=128, 
-                                            n_tiles=(8,8), 
-                                            show_progress=True)
-print('Done.', img.shape)
 
-plt.figure(figsize=(8,8))
-plt.imshow(img[::vis_down,::vis_down], clim=(0,1), cmap='gray')
-plt.imshow(labels[::vis_down,::vis_down], cmap=lbl_cmap, alpha=0.5)
-plt.axis('off')
-plt.show()
+if make_segmentation:
+    # prints a list of available models 
+    StarDist2D.from_pretrained()
+    # load the versatile 2D model
+    model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
-# remove small objects, relabel and save mask
-print('Removing small objects and relabeling...')
-labels = morphology.remove_small_objects(labels, 1000)
-labels = measure.label(labels, connectivity=labels.ndim)
-print('Saving mask...')
-imsave(os.path.join(outputFolder,'mask_'+imgName), labels.astype(np.uint16))
+    # use block_size and n_tiles to avoid OOM
+    print('Predicting cells with StarDist...')
+    labels, _ = model.predict_instances_big(img, axes='YX', 
+                                                block_size=4096,
+                                                min_overlap=128, 
+                                                n_tiles=(8,8), 
+                                                show_progress=True)
+    print('Done.', img.shape)
 
+    plt.figure(figsize=(8,8))
+    plt.imshow(img[::vis_down,::vis_down], clim=(0,1), cmap='gray')
+    plt.imshow(labels[::vis_down,::vis_down], cmap=lbl_cmap, alpha=0.5)
+    plt.axis('off')
+    plt.show()
 
+    ### remove small objects, relabel and save mask
+    print('Removing small objects and relabeling...')
+    labels = morphology.remove_small_objects(labels, 1000)
+    labels = measure.label(labels, connectivity=labels.ndim)
+    print('Saving mask...')
+    imsave(os.path.join(outputFolder,'mask_'+imgName), labels.astype(np.uint16))
+
+else:
+    print('Reading mask...')
+    labels = imread(os.path.join(outputFolder,'mask_'+imgName))
+    print('Done.')
 
 ### Find cell props
-print('Reading mask...')
-# labels = imread(os.path.join(outputFolder,'mask_'+imgName))
-print('Done.')
-
 # use skimage measure regionprops to extract all features
 print('Extracting region props...')
 prop_names = ['label','bbox','centroid','area','perimeter',

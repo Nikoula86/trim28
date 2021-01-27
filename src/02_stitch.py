@@ -23,6 +23,14 @@ nrows = 14
 ncols = 12
 plane = 8
 
+folder_names = [
+                    os.path.join(folderPath,i) for i in [
+                        # 'uncoated_wt-triton',
+                        'coated_wt-triton',
+                        'coated_empty-triton',
+                        ]
+                ]
+
 ########################################
 
 def imagej_metadata_tags(metadata, byteorder):
@@ -119,14 +127,6 @@ def make_lut():
 dim1 = int(2160/down*nrows-overlap*(nrows-1))
 dim2 = int(2160/down*ncols-overlap*(ncols-1))
 imgs_all = np.zeros((4,dim1,dim2)).astype(np.uint16)
-
-folder_names = [
-                    os.path.join(folderPath,i) for i in [
-                        # 'uncoated_wt-triton',
-                        'coated_wt-triton',
-                        'coated_empty-triton',
-                        ]
-                ]
 
 i = 1
 for folder in folder_names:
