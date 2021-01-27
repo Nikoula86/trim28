@@ -5,6 +5,19 @@ import numpy as np
 from itertools import product
 from skimage.io import imread, imsave
 
+####################################
+
+pc = os.environ['COMPUTERNAME']
+if pc=='PCBA-TRIVEDI03': # my Razer
+    folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+elif pc=='PCBA-TRIVEDI02': # workstation
+    folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+
+exp_folder = os.path.join('2021-01-14_NMGstain_coated_and_uncoated')
+
+slide_names = ['uncoated_', 'coated_']
+
+##################################
 def imagej_metadata_tags(metadata, byteorder):
     """Return IJMetadata and IJMetadataByteCounts tags from metadata dict.
 
@@ -97,12 +110,10 @@ def make_lut():
     return luts_dict
 
 df = pd.read_csv("metadata.csv")
-print(df)
+print(df.head())
 
 slides = list(set(df.col))
 slides.sort()
-
-slide_names = ['uncoated_', 'coated_']
 
 for slide, slide_name in zip(slides, slide_names):
     df_slide = df[df.col==slide]
@@ -186,7 +197,7 @@ for slide, slide_name in zip(slides, slide_names):
                     ijtags = imagej_metadata_tags({'LUTs': [luts_dict[i] for i in luts_name]}, '>')
 
                     outname = 'r%dc%d.tif'%(yidx,xidx)
-                    imsave(os.path.join(folderName,outname),stacks, byteorder='>', imagej=True,
+                    imsave(os.path.join(folder_raw,exp_folder,folderName,outname),stacks, byteorder='>', imagej=True,
                                     metadata={'mode': 'composite'}, extratags=ijtags)
 
 

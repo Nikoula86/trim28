@@ -7,7 +7,16 @@ from skimage.io import imread, imsave
 
 ########################################
 
-folderPath = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG','2021-01-14_NMGstain_coated_and_uncoated')
+pc = os.environ['COMPUTERNAME']
+if pc=='PCBA-TRIVEDI03': # my Razer
+    folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+elif pc=='PCBA-TRIVEDI02': # workstation
+    folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+
+exp_folder = os.path.join('2021-01-14_NMGstain_coated_and_uncoated')
+
+folderPath = os.path.join(folder_raw, exp_folder)
+
 down = 1
 overlap = int(79/down)
 nrows = 14
@@ -114,11 +123,14 @@ imgs_all = np.zeros((4,dim1,dim2)).astype(np.uint16)
 folder_names = [
                     os.path.join(folderPath,i) for i in [
                         # 'uncoated_wt-triton',
-                        'coated_wt-triton'
+                        'coated_wt-triton',
+                        'coated_empty-triton',
                         ]
                 ]
 
+i = 1
 for folder in folder_names:
+    print('%d/%d:'%(i,len(folder_names)), folder)
     # for row in np.arange(nrows):
     for col in tqdm.tqdm(np.arange(ncols)):
         for row in np.arange(nrows):
@@ -127,6 +139,7 @@ for folder in folder_names:
 
             filename = os.path.join(folder,'r%dc%d.tif'%(row,col))
             img = imread(filename)[8,:4,::-1,::]
+            # downsize image
             img = img[:,::down,::down]
             # print(img.shape, c1, c2)
 
@@ -144,4 +157,6 @@ for folder in folder_names:
 
     imsave(folder+'-stitched_%d%d1.tif'%(down,down), imgs_all, byteorder='>', imagej=True,
                             metadata={'mode': 'composite'}, extratags=ijtags)
+
+    i += 1
 

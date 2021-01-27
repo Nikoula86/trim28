@@ -1,8 +1,20 @@
 import pandas as pd
 import xml.etree.ElementTree as et 
-import tqdm
+import tqdm, os
 
-xtree = et.parse("Index_test.idx.xml")
+#####################
+
+pc = os.environ['COMPUTERNAME']
+if pc=='PCBA-TRIVEDI03': # my Razer
+    folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+elif pc=='PCBA-TRIVEDI02': # workstation
+    folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+
+exp_folder = os.path.join('2021-01-14_NMGstain_coated_and_uncoated')
+
+#####################
+
+xtree = et.parse(os.path.join(folder_raw,exp_folder,'Images','Index_test.idx.xml'))
 xroot = xtree.getroot()
 # print(xroot.attrib['Images'])
 images = xroot.findall('{http://www.perkinelmer.com/PEHH/HarmonyV5}Images')[0]
@@ -54,5 +66,5 @@ for image in tqdm.tqdm(images.iter('{http://www.perkinelmer.com/PEHH/HarmonyV5}I
 
     df = df.append(pd.Series(row), ignore_index=True)
 
-print(df)
-df.to_csv('metadata_test.csv')
+print(df.head())
+df.to_csv(os.path.join(folder_raw,exp_folder,'metadata.csv'))
