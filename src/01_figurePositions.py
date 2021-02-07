@@ -13,9 +13,19 @@ if pc=='PCBA-TRIVEDI03': # my Razer
 elif pc=='PCBA-TRIVEDI02': # workstation
     folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
 
-exp_folder = os.path.join('2021-01-14_NMGstain_coated_and_uncoated')
+exp_folder = os.path.join('2021-02-05_NGM_immuno')
 
-slide_names = ['uncoated_', 'coated_']
+slide_names = ['rep1']
+
+##### examples
+### wellsNames = [['wt-triton','empty-triton','wt-triton-mem','empty-triton-mem'],
+###               ['wt-tween','empty-tween','wt-tween-mem','empty-tween-mem']]
+#####
+
+wellsNames = [['A01','B01','C01','D01'],
+              ['A02','B02','C02','D02']]
+
+channel_list = [2,1,3,4]
 
 ##################################
 def imagej_metadata_tags(metadata, byteorder):
@@ -109,7 +119,9 @@ def make_lut():
 
     return luts_dict
 
-df = pd.read_csv("metadata.csv")
+########################################
+
+df = pd.read_csv(os.path.join(folder_raw,exp_folder,"metadata.csv"))
 print(df.head())
 
 slides = list(set(df.col))
@@ -133,23 +145,21 @@ for slide, slide_name in zip(slides, slide_names):
             (np.max(ypos)+(np.min(ypos)+np.max(ypos))/2)/2,
             np.max(ypos)]
 
-    # fig, ax = plt.subplots(1,1)
-    # ax.scatter(df_slide[df_slide.channel==1].Xpos, df_slide[df_slide.channel==1].Ypos, c=df_slide[df_slide.channel==1]['Unnamed: 0'], s=10)
-    # output = np.array(list(product(xlims, ylims)))
-    # ax.plot(output[:,0], output[:,1],'or')
-    # ax.set_xlabel('X')
-    # ax.set_ylabel('Y')
-    # plt.show()
+#    fig, ax = plt.subplots(1,1)
+#    ax.scatter(df_slide[df_slide.channel==1].Xpos, df_slide[df_slide.channel==1].Ypos, c=df_slide[df_slide.channel==1]['Unnamed: 0'], s=10)
+#    output = np.array(list(product(xlims, ylims)))
+#    ax.plot(output[:,0], output[:,1],'or')
+#    ax.set_xlabel('X')
+#    ax.set_ylabel('Y')
+#    plt.show()
 
-    folderNames = [['wt-triton','empty-triton','wt-triton-mem','empty-triton-mem'],
-                   ['wt-tween','empty-tween','wt-tween-mem','empty-tween-mem']]
     for i in range(len(xlims)-1):
         for j in range(len(ylims)-1):
 
             print(i,j)
-            folderName = slide_name+folderNames[i][j]
-            if not os.path.exists(folderName):
-                os.mkdir(folderName)
+            outFolder = os.path.join(folder_raw,exp_folder,slide_name+'_'+wellsNames[i][j])
+            if not os.path.exists(outFolder):
+                os.mkdir(outFolder)
 
             xmin = xlims[i]
             xmax = xlims[i+1]
@@ -178,13 +188,12 @@ for slide, slide_name in zip(slides, slide_names):
             for xidx, x in enumerate(xpos_poc):
                 for yidx, y in enumerate(ypos_poc):
                     df_pos = df_poc[(df_poc.Xpos==x)&(df_poc.Ypos==y)]
-                    channel_list = [2,1,5,3,4]
                     stack = []
                     for ch in tqdm.tqdm(channel_list):
                         df_pos_ch = df_pos[df_pos.channel==ch]
                         df_pos_ch = df_pos_ch.sort_values(by='Zpos')
                         # [print(img_file) for img_file in df_pos_ch.filename]
-                        stack_ch = np.stack([imread(os.path.join('Images',img_file)) for img_file in df_pos_ch.filename])
+                        stack_ch = np.stack([imread(os.path.join(folder_raw,exp_folder,'Images',img_file)) for img_file in df_pos_ch.filename])
                         stack.append(stack_ch)
 
                     # order channels
@@ -197,7 +206,7 @@ for slide, slide_name in zip(slides, slide_names):
                     ijtags = imagej_metadata_tags({'LUTs': [luts_dict[i] for i in luts_name]}, '>')
 
                     outname = 'r%dc%d.tif'%(yidx,xidx)
-                    imsave(os.path.join(folder_raw,exp_folder,folderName,outname),stacks, byteorder='>', imagej=True,
+                    imsave(os.path.join(outFolder,outname),stacks, byteorder='>', imagej=True,
                                     metadata={'mode': 'composite'}, extratags=ijtags)
 
 

@@ -10,11 +10,11 @@ if pc=='PCBA-TRIVEDI03': # my Razer
 elif pc=='PCBA-TRIVEDI02': # workstation
     folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
 
-exp_folder = os.path.join('2021-01-14_NMGstain_coated_and_uncoated')
+exp_folder = os.path.join('2021-02-05_NGM_immuno')
 
 #####################
 
-xtree = et.parse(os.path.join(folder_raw,exp_folder,'Images','Index_test.idx.xml'))
+xtree = et.parse(os.path.join(folder_raw,exp_folder,'Images','Index.idx.xml'))
 xroot = xtree.getroot()
 # print(xroot.attrib['Images'])
 images = xroot.findall('{http://www.perkinelmer.com/PEHH/HarmonyV5}Images')[0]
