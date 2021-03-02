@@ -16,25 +16,40 @@ lbl_cmap = random_label_cmap()
 
 pc = os.environ['COMPUTERNAME']
 if pc=='PCBA-TRIVEDI03': # my Razer
-    folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+    folder_raw = os.path.join('E:',os.sep,'immuno_NMG')
 elif pc=='PCBA-TRIVEDI02': # workstation
     folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
 
-exp_folder = os.path.join('2021-02-05_NGM_immuno')
+exp_folder = os.path.join('2021-02-14_NMG_immuno2_fullSlide2')
 
 imgFolder = os.path.join(folder_raw, exp_folder, 'results')
 outputFolder = os.path.join(folder_raw, exp_folder, 'results')
 
 imgNames = [
-            'rep1_A01.tif',
-            'rep1_A02.tif',
-            'rep1_B01.tif',
-            'rep1_B02.tif',
-            'rep1_C01.tif',
-            'rep1_C02.tif',
-            'rep1_D01.tif',
-            'rep1_D02.tif',
+            'slide2_var653','slide2_var654','slide2_var708','slide2_var709',                        
+            'slide2_GFP','slide2_WT','slide2_var180','slide2_var374'
+
+            # 'rep1_GFP-stitched_%d%d.tif',
+            # 'rep2_GFP-stitched_%d%d.tif',
+            # 'rep1_WT-stitched_%d%d.tif',
+            # 'rep2_WT-stitched_%d%d.tif',
+            # 'rep3_WT-stitched_%d%d.tif',
+            # 'rep4_WT-stitched_%d%d.tif',
+            # 'rep5_WT_noSep-stitched_%d%d.tif',
+            # 'rep6_WT_noTrim-stitched_%d%d.tif',
+            
+            # 'rep1_WT-stitched_%d%d.tif',
+            # 'rep1_empty-stitched_%d%d.tif',
+            # 'rep2_WT-stitched_%d%d.tif',
+            # 'rep2_GFP-stitched_%d%d.tif',
+
+            # 'rep1_C01-stitched_%d%d.tif',
+            # 'rep1_C02-stitched_%d%d.tif',
+            # 'rep1_D01-stitched_%d%d.tif',
+            # 'rep1_D02-stitched_%d%d.tif',
             ]
+imgNames = [i+'-stitched_%d%d.tif' for i in imgNames]
+
 down = 1
 
 channel_segment = 1 # DAPI
@@ -43,6 +58,21 @@ vis_down = 4
 make_segmentation = True
 
 ################################
+
+def remove_large_objects(segments, max_size):
+    out = np.copy(segments)
+    component_sizes = np.bincount(segments.ravel())
+    too_small = component_sizes > max_size
+    too_small_mask = too_small[segments]
+    out[too_small_mask] = 0
+    return out
+
+################################
+
+# prints a list of available models 
+StarDist2D.from_pretrained()
+# load the versatile 2D model
+model = StarDist2D.from_pretrained('2D_versatile_fluo')
 
 for imgName in imgNames:
 
@@ -58,10 +88,6 @@ for imgName in imgNames:
     img = normalize(X[:,:,channel_segment], 1,99.8, axis=axis_norm)
     
     if make_segmentation:
-        # prints a list of available models 
-        StarDist2D.from_pretrained()
-        # load the versatile 2D model
-        model = StarDist2D.from_pretrained('2D_versatile_fluo')
     
         # use block_size and n_tiles to avoid OOM
         print('Predicting cells with StarDist...')
@@ -81,6 +107,7 @@ for imgName in imgNames:
         ### remove small objects, relabel and save mask
         print('Removing small objects and relabeling...')
         labels = morphology.remove_small_objects(labels, 1000)
+        labels = remove_large_objects(labels, 50000)
         labels = measure.label(labels, connectivity=labels.ndim)
         print('Saving mask...')
         imsave(os.path.join(outputFolder,'mask_'+imgName), labels.astype(np.uint16))

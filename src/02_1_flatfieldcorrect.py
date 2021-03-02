@@ -1,71 +1,24 @@
 import pandas as pd
-import os, tqdm, struct
+import os, tqdm, struct, glob
 import matplotlib.pyplot as plt
 import numpy as np
 from itertools import product
 from skimage.io import imread, imsave
 
-########################################
+####################################
 
 pc = os.environ['COMPUTERNAME']
 if pc=='PCBA-TRIVEDI03': # my Razer
-    folder_raw = os.path.join('E:',os.sep,'immuno_NMG')
+    folder_raw = os.path.join('D:',os.sep,'immuno_NMG')
 elif pc=='PCBA-TRIVEDI02': # workstation
     folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+folder_raw = os.path.join('D:',os.sep,'immuno_NMG')
 
-exp_folder = os.path.join('2021-02-14_NMG_immuno2_fullSlide2')
+exp_folder = os.path.join('2021-02-21_NMG_rep2_Slide1')
 
-folderPath = os.path.join(folder_raw, exp_folder)
+folders = ['testFF']
 
-down = 1
-overlap = int(78/down)
-nrows = 14
-ncols = 14
-planes = [
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2,
-            2
-        ]
-
-folder_names = [
-                    os.path.join(folderPath,i) for i in [
-                        # 'rep1_A01',
-                        # 'rep1_A02',
-                        # 'rep1_B01',
-                        # 'rep1_B02',
-
-                        # 'rep1_GFP',
-                        # 'rep2_GFP',
-                        # 'rep1_WT',
-                        # 'rep2_WT',
-                        # 'rep3_WT',
-                        # 'rep4_WT',
-                        # 'rep5_WT_noSep',
-                        # 'rep6_WT_noTrim',
-
-                        'slide2_var653','slide2_var654','slide2_var708','slide2_var709',
-                        'slide2_GFP','slide2_WT','slide2_var180','slide2_var374'
-                        ]
-                ]
-
-n_ch = [
-    4,
-    4,
-    4,
-    4,
-    4,
-    4,
-    4,
-    4,
-        ]
-
-########################################
-
+##################################
 def imagej_metadata_tags(metadata, byteorder):
     """Return IJMetadata and IJMetadataByteCounts tags from metadata dict.
 
@@ -157,52 +110,48 @@ def make_lut():
 
     return luts_dict
 
-dim1 = int(2160/down*nrows-overlap*(nrows-1))
-dim2 = int(2160/down*ncols-overlap*(ncols-1))
+######################
 
-i = 1
-for folder, plane in zip(folder_names, planes):
-    print('%d/%d:'%(i,len(folder_names)), folder)
-    well = folder.split('\\')[-1]
+fflist = glob.glob(os.path.join('D',os.sep,'immuno_NMG','2021-03-02_FlatField','*.tif'))
+fflist.sort()
+ffs = np.stack([imread(f) for f in fflist]).astype(float)
+ffs = np.stack([ff/np.mean(ff) for ff in ffs])
 
-    imgs_all = np.zeros((n_ch[i-1],dim1,dim2)).astype(np.uint16)
-    # create imagej metadata with LUTs
-    luts_dict = make_lut()
-    luts_name = ['gray','blue','green','orange']
-    ijtags = imagej_metadata_tags({'LUTs': [luts_dict[i] for i in luts_name]}, '>')
-    # for row in np.arange(nrows):
-    for col in tqdm.tqdm(np.arange(ncols)):
-        for row in np.arange(nrows):
-            c1 = int(2160/down/2+row*(2160/down-overlap))
-            c2 = int(2160/down/2+col*(2160/down-overlap))
+for folder in folders:
+    flist = glob.glob(os.path.join(folder_raw, exp_folder, folder, '*.tif'))
+    flist.sort()
 
-            filename = os.path.join(folder,'r%dc%d.tif'%(row,col))
-            
-            if os.path.exists(filename):
-                img = imread(filename)
-                if img.ndim==3: ## if 2D image (Y,X,C) expand to fake 3D
-                    img = np.expand_dims(img,0)
-                # print(img.shape)
-                # select best focused plane
-                img = img[plane,::-1,::,:]
-                # move channel axis in front
-                img = np.moveaxis(img,-1,0)
-                # downsize image
-                img = img[:,::down,::down]
-                # print(img.shape, c1, c2)
-    
-                imgs_all[:,int(c1-2160/down/2):int(c1+2160/down/2),
-                        int(c2-2160/down/2):int(c2+2160/down/2)] = img
+    for f in tqdm.tqdm(flist):
+        img = imread(f).astype(float)
+        print(img.shape)
+        if img.ndim==3:
+            img = np.expand_dims(img,0)
 
-        # imsave(os.path.join(folderPath,'results',well+'-stitched_%d%d.tif'%(down,down)), imgs_all, byteorder='>', imagej=True,
-        #                         metadata={'mode': 'composite'}, extratags=ijtags)
+        # plt.figure()
+        # plt.imshow(img[0,:,:,0])
+        # plt.figure()
+        # plt.imshow(img[0,:,:,1])
+        # plt.figure()
+        # plt.imshow(img[1,:,:,0])
+        # plt.show()
 
+        for ch in [1,2,3]:
+            for i in range(img.shape[0]):
+                img[i,:,:,ch] = img[i,:,:,ch]*ffs[ch]
+        img = img.astype(np.uint16)
 
-    if not os.path.exists(os.path.join(folderPath,'results')):
-        os.mkdir(os.path.join(folderPath,'results'))
+        img = np.moveaxis(img,-1,1)
+        # img = np.swapaxes(img,0,1)
+        print(img.shape)
 
-    imsave(os.path.join(folderPath,'results',well+'-stitched_%d%d.tif'%(down,down)), imgs_all, byteorder='>', imagej=True,
-                            metadata={'mode': 'composite'}, extratags=ijtags, check_contrast=False)
+        # create imagej metadata with LUTs
+        luts_dict = make_lut()
+        luts_name = ['gray','blue','green','orange']
+        ijtags = imagej_metadata_tags({'LUTs': [luts_dict[i] for i in luts_name]}, '>')
 
-    i += 1
+        outname = f[:-4]+'_1.tif'
+        # print(outname)
+        imsave(outname,img, byteorder='>', imagej=True,
+                        metadata={'mode': 'composite'}, extratags=ijtags, check_contrast=False)
 
+        # imsave(outname,img)

@@ -6,11 +6,11 @@ import tqdm, os
 
 pc = os.environ['COMPUTERNAME']
 if pc=='PCBA-TRIVEDI03': # my Razer
-    folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
+    folder_raw = os.path.join('D:',os.sep,'immuno_NMG')
 elif pc=='PCBA-TRIVEDI02': # workstation
     folder_raw = os.path.join('Y:',os.sep,'Nicola_Gritti','raw_data','immuno_NMG')
 
-exp_folder = os.path.join('2021-02-05_NGM_immuno')
+exp_folder = os.path.join('2021-03-02_FlatField')
 
 #####################
 
@@ -27,7 +27,7 @@ df = pd.DataFrame({'filename':[],
                     'channel':[], 'chName':[], 
                     'expTime':[]})
 
-for image in tqdm.tqdm(images.iter('{http://www.perkinelmer.com/PEHH/HarmonyV5}Image')):
+for image in tqdm.tqdm(images.iter('{http://www.perkinelmer.com/PEHH/HarmonyV5}Image'), total=len(images)):
     # print(image.tag, image.attrib)
 
     row = {}
